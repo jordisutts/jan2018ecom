@@ -1,10 +1,11 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpResponse
 from .forms import OrderForm, MakePaymentForm
 from products.models import Product
 from decimal import Decimal
 from cart.utils import get_cart_items_and_total
 from django.utils import timezone
+from .models import OrderLineItem
 
 # Create your views here.
 def checkout(request):
@@ -15,9 +16,23 @@ def checkout(request):
         order.date = timezone.now()
         order.save()
         
+        #save order line items
+        
+        cart = request.session.get('cart', {})
+        for id, quantity in cart.items():
+            product = get_object_or_404 (Product, pk=id)
+            order_line_item = OrderLineItem(
+                order = order,
+                product = product,
+                quantity = quantity
+                )
+            order_line_item.save()
+        
         #charge the card
         
         
+        
+        #clear the cart
         del request.session['cart']
         return redirect('home')
         
