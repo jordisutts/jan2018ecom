@@ -7,6 +7,11 @@ from decimal import Decimal
 from cart.utils import get_cart_items_and_total
 from django.utils import timezone
 from .models import OrderLineItem
+import stripe
+from django.contrib import messages
+from cart.utils import get_cart_items_and_total
+
+stripe.api_key = settings.STRIPE_SECRET
 
 # Create your views here.
 def checkout(request):
@@ -30,8 +35,23 @@ def checkout(request):
             order_line_item.save()
         
         #charge the card
-        
-        
+        payment_form = MakePaymentForm(request.POST)
+        if payment_form.is_valid():
+            total = get_cart_items_and_total(cart)['total']
+            total_in_cent = int(total*100)
+            
+            try:
+               customer = stripe.Charge.create(
+                   amount= total_in_cent,
+                   currency="EUR",
+                   description="Dummy Transaction",
+                   card=payment_form.cleaned_data['stripe_id'],
+               )
+            except stripe.error.CardError:
+               messages.error(request, "Your card was declined!")
+
+            if customer.paid:
+               messages.error(request, "You have successfully paid")
         
         #clear the cart
         del request.session['cart']
@@ -40,7 +60,7 @@ def checkout(request):
     else:
         order_form = OrderForm()
         payment_form = MakePaymentForm()
-        context = {'order_form': order_form, 'payment_form': payment_form, 'publishable': settings.STRIPE_PUBLISHABLE_KEY }
+        context = {'order_form': order_form, 'payment_form': payment_form, 'publishable': settings.STRIPE_PUBLISHABLE }
         cart = request.session.get('cart', {})
         cart_items_and_total = get_cart_items_and_total(cart)
         context.update(cart_items_and_total)
