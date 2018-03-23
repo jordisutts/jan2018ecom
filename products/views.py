@@ -17,7 +17,7 @@ def search_products(request):
     match = request.GET.get('match')
     
     if match=='contains':
-        products = Product.objects.filter(name__icontains=request.GET['query'])
+        products = Product.objects.filter(name__contains=request.GET['search'])
     else:
         products = Product.objects.filter(name__startswith=request.GET['query'])
         
